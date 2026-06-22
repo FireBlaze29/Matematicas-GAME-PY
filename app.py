@@ -87,7 +87,7 @@ class VentInicio:
                 self.screen = pg.display.set_mode((self.ancho, self.alto), pg.RESIZABLE)
                 self.IndexAncho, self.IndexAlto = self.ancho/ANCHO, self.alto/ALTO
                 self.Recharge()
-            # Actualizar widgets
+            # Actualiza widgets
             pgw.update(event)
 
     def run(self):

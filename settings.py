@@ -1,8 +1,9 @@
-RES = ANCHO, ALTO = 480, 272 #resolucion nativa de la psp
+RES = ANCHO, ALTO = 480*3, 272*3 #resolucion nativa de la psp
 FPS = 60
-TILE_SIZE = 32
+TILE_SIZE = 16
 
 PLAYER_POS =  2, 2
 PLAYER_ANGLE = 0
-PLAYER_SPEED = 0.004
+PLAYER_SPEED = 0.008
 PLAYER_ROT_SPEED = 0.002
+PLAYER_RADIUS = 0.4

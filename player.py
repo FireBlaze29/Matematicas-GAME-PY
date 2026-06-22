@@ -1,13 +1,32 @@
 from settings import *
 import pygame as pg
 import math
+from armas import Armas
 
-class Player:
+class Player(pg.sprite.Sprite):
     def __init__(self, game):
+        pg.sprite.Sprite.__init__(self)
         self.game = game
         self.x, self.y = PLAYER_POS
         self.angle = PLAYER_ANGLE
-    
+        self.radius = PLAYER_RADIUS
+
+        self.rect = pg.Rect(0, 0, self.radius * 2 * TILE_SIZE * self.game.IndexAlto,
+                            self.radius * 2 * TILE_SIZE * self.game.IndexAlto)
+        self.rect.center = (self.x * TILE_SIZE * self.game.IndexAlto,
+                            self.y * TILE_SIZE * self.game.IndexAlto)
+
+        self.sttas = {
+            'life': 1,
+            'hand': 0,
+            'obj': None,
+        }
+
+        #self.type_arm = 0       reintentar en otro momento
+
+        self.create_hit()
+        self.create_hand()
+
     def movement(self):
         dx, dy = 0, 0
         speed = PLAYER_SPEED * self.game.delta_time
@@ -26,46 +45,144 @@ class Player:
             dx *= 0.7071  # 1 / sqrt(2)
             dy *= 0.7071
 
-        self.check_wall_collision(dx, dy)
+        new_x = self.x + dx
+        if not self.check_circle_collision(new_x, self.y, self.radius):
+            self.x = new_x
+
+        new_y = self.y + dy
+        if not self.check_circle_collision(self.x, new_y, self.radius):
+            self.y = new_y
+
+        # Actualizar el rect del sprite
+        self.rect.center = (self.x * TILE_SIZE * self.game.IndexAlto,
+                            self.y * TILE_SIZE * self.game.IndexAlto)
+        
+        if keys[pg.K_f] and self.check_item_collision("bool"):
+            self.sttas['hand'] = 1
+            item = self.check_item_collision("coord")
+            self.type_arm = self.game.Level.not_wall[item]
+            del self.game.Level.not_wall[item]
+        
+        if keys[pg.K_y] and self.sttas['hand'] != 0:
+            self.sttas['hand'] = 0
+            #coord = self.check_item_collision("coord")  se intento hacer un sistema de re-recoleccion
+            #self.game.Level.not_wall[coord] = self.type_arm       pero da problemas con el mapa
 
         self.rotate_toward_mouse()
 
     def rotate_toward_mouse(self):
-        
         mouse_px, mouse_py = pg.mouse.get_pos()
-        
         scale = TILE_SIZE * self.game.IndexAlto
         world_mouse_x = mouse_px / scale
         world_mouse_y = mouse_py / scale
-        
+
         dx = world_mouse_x - self.x
         dy = world_mouse_y - self.y
         self.angle = math.atan2(dy, dx)
+        self.angle %= math.tau
 
-        self.angle %= math.tau #tau es 2*pi, esto asegura que el ángulo siempre esté entre 0 y 2*pi
+    def check_circle_collision(self, cx, cy, radius):
+        """Devuelve True si el círculo (cx, cy, radius) colisiona con alguna pared."""
+        min_tile_x = int(math.floor(cx - radius))
+        max_tile_x = int(math.ceil(cx + radius))
+        min_tile_y = int(math.floor(cy - radius))
+        max_tile_y = int(math.ceil(cy + radius))
+
+        for y in range(min_tile_y, max_tile_y + 1):
+            for x in range(min_tile_x, max_tile_x + 1):
+                if (x, y) in self.game.Level.world_map:
+                    closest_x = max(x, min(cx, x + 1))
+                    closest_y = max(y, min(cy, y + 1))
+                    dist_x = cx - closest_x
+                    dist_y = cy - closest_y
+                    if dist_x * dist_x + dist_y * dist_y < radius * radius:
+                        return True
+        return False
     
-    def check_wall(self, x, y):
-        return (x, y) not in self.game.Level.world_map
-    
-    def check_wall_collision(self, dx, dy):
-        if self.check_wall(int(self.x + dx), int(self.y)):
-            self.x += dx
-        if self.check_wall(int(self.x), int(self.y + dy)):
-            self.y += dy
-    
+    def check_item_collision(self, validate, add_radius = 0):
+        pickup_radius = self.radius + add_radius
+
+        for (tx, ty) in list(self.game.Level.not_wall.keys()):
+            obj_x = tx + 0.5
+            obj_y = ty + 0.5
+
+            dist = math.hypot(self.x - obj_x, self.y - obj_y)
+
+            if dist < pickup_radius:
+                if validate == "coord":
+                    return (tx, ty)
+                elif validate == "bool":
+                    return True
+
     def draw(self):
-        pg.draw.line(self.game.screen, 'yellow', (self.x * TILE_SIZE * self.game.IndexAlto, self.y * TILE_SIZE * self.game.IndexAlto),
+        pg.draw.line(self.game.screen, 'yellow',
+                     (self.x * TILE_SIZE * self.game.IndexAlto, self.y * TILE_SIZE * self.game.IndexAlto),
                      (self.x * TILE_SIZE * self.game.IndexAlto + ANCHO * math.cos(self.angle),
                       self.y * TILE_SIZE * self.game.IndexAlto + ANCHO * math.sin(self.angle)), 2)
-        pg.draw.circle(self.game.screen, 'yellow', (self.x * TILE_SIZE * self.game.IndexAlto, self.y * TILE_SIZE * self.game.IndexAlto), 5)
+        pg.draw.circle(self.game.screen, 'yellow',
+                       (self.x * TILE_SIZE * self.game.IndexAlto, self.y * TILE_SIZE * self.game.IndexAlto), 5)
+
+        pg.draw.circle(self.game.screen, (139, 69, 19),
+                       (self.x * TILE_SIZE * self.game.IndexAlto, self.y * TILE_SIZE * self.game.IndexAlto),
+                       self.radius * TILE_SIZE * self.game.IndexAlto, 2)
+
+        self.draw_hit()
+        self.draw_hand()
 
     def update(self):
         self.movement()
-    
+
     @property
     def pos(self):
         return (self.x, self.y)
-    
+
     @property
     def map_pos(self):
         return int(self.x), int(self.y)
+
+    def draw_hand(self):
+        if self.sttas['hand'] == 0:
+            self.hand = pg.draw.rect(self.collider_hand, self.hand_color,
+                                     (0, 0, self.hand_lado, self.hand_lado), 2)
+            self.roteted_hand = pg.transform.rotate(self.collider_hand, -math.degrees(self.angle))
+
+            if self.hand_visible:
+                self.rect_hand = self.roteted_hand.get_rect(
+                    center=((self.x + math.cos(self.angle) * self.hand_lado/32) * TILE_SIZE * self.game.IndexAlto,
+                            (self.y + math.sin(self.angle) * self.hand_lado/32) * TILE_SIZE * self.game.IndexAlto))
+            else:
+                self.rect_hand = self.roteted_hand.get_rect(center=(-1000, -1000))
+            self.game.screen.blit(self.roteted_hand, self.rect_hand)
+
+    def create_hand(self):
+        self.hand_lado = 15 * self.game.IndexAlto
+        self.hand_color = (0, 0, 255)  # Azul para el hitbox
+        self.time_hand = 0
+        self.hand_ms = 300
+        self.hand_visible = False
+        self.collider_hand = pg.Surface((self.hand_lado, self.hand_lado), pg.SRCALPHA)
+
+    def draw_hit(self):
+        self.hit = pg.draw.rect(self.collider_hit, self.hit_color,
+                                (0, 0, self.hit_lado, self.hit_lado), 2)
+        self.roteted_hit = pg.transform.rotate(self.collider_hit, -math.degrees(self.angle))
+
+        if self.hit_visible:
+            self.rect_hit = self.roteted_hit.get_rect(
+                center=((self.x + math.cos(self.angle) * self.hit_lado/32) * TILE_SIZE * self.game.IndexAlto,
+                        (self.y + math.sin(self.angle) * self.hit_lado/32) * TILE_SIZE * self.game.IndexAlto))
+        else:
+            self.rect_hit = self.roteted_hit.get_rect(center=(-1000, -1000))
+        self.game.screen.blit(self.roteted_hit, self.rect_hit)
+
+    def create_hit(self):
+        self.hit_lado = 15 * self.game.IndexAlto
+        self.hit_color = (255, 0, 0)  # Rojo para el hitbox
+        self.time_hit = 0
+        self.hit_ms = 300
+        self.hit_visible = False
+        self.collider_hit = pg.Surface((self.hit_lado, self.hit_lado), pg.SRCALPHA)
+    
+    def shoot(self):
+        proj = Armas(self.game, self.x, self.y, self.angle)
+        self.game.projectiles.add(proj)
