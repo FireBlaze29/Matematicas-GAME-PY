@@ -7,7 +7,7 @@ class Player(pg.sprite.Sprite):
     def __init__(self, game):
         pg.sprite.Sprite.__init__(self)
         self.game = game
-        self.x, self.y = PLAYER_POS
+        self.x, self.y = self.game.Level.player_pos[0] + (TILE_SIZE/30), self.game.Level.player_pos[1] + (TILE_SIZE/30)
         self.angle = PLAYER_ANGLE
         self.radius = PLAYER_RADIUS
 
@@ -17,10 +17,12 @@ class Player(pg.sprite.Sprite):
                             self.y * TILE_SIZE * self.game.IndexAlto)
 
         self.sttas = {
-            'life': 1,
+            'life': 5,
             'hand': 0,
             'obj': None,
         }
+
+        self.hand_hit_tick = 0
 
         #self.type_arm = 0       reintentar en otro momento
 
@@ -117,8 +119,8 @@ class Player(pg.sprite.Sprite):
     def draw(self):
         pg.draw.line(self.game.screen, 'yellow',
                      (self.x * TILE_SIZE * self.game.IndexAlto, self.y * TILE_SIZE * self.game.IndexAlto),
-                     (self.x * TILE_SIZE * self.game.IndexAlto + ANCHO * math.cos(self.angle),
-                      self.y * TILE_SIZE * self.game.IndexAlto + ANCHO * math.sin(self.angle)), 2)
+                     (self.x * TILE_SIZE * self.game.IndexAlto + ANCHO/4 * math.cos(self.angle),
+                      self.y * TILE_SIZE * self.game.IndexAlto + ANCHO/4 * math.sin(self.angle)), 2)
         pg.draw.circle(self.game.screen, 'yellow',
                        (self.x * TILE_SIZE * self.game.IndexAlto, self.y * TILE_SIZE * self.game.IndexAlto), 5)
 

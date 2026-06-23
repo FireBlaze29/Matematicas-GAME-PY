@@ -4,6 +4,7 @@ import sys
 from levels import ChargeLevels, Level1, Level2
 from player import Player
 import player
+from enemy import Enemy
 from settings import ANCHO, ALTO, TILE_SIZE, FPS
 
 class Game:
@@ -23,8 +24,12 @@ class Game:
         self.Recharge()
     
     def Recharge(self):
-        self.Level = ChargeLevels(self, Level1)
+        self.Level = ChargeLevels(self, Level2)
         self.player = Player(self)
+
+        self.enemy_list = []
+        for pos in self.Level.enemy1_pos:
+            self.enemy_list.append(Enemy(self, (pos[0], pos[1])))
 
     def update(self):
         self.player.update()
@@ -34,16 +39,32 @@ class Game:
         self.delta_time = self.clock.tick(FPS)
         pg.display.set_caption(f"Gameplay - FPS: {self.clock.get_fps():.1f}")
 
+        for enemy in self.enemy_list:
+            enemy.update()
+
+            if self.player.rect_hand.colliderect(enemy.rect) and self.player.hand_hit_tick == 1:
+                enemy.sttas["life"] += -1
+            
+            if enemy.sttas["life"] < 1:
+                self.enemy_list.remove(enemy)
+        
+        #print(self.enemy_list)
+
     def draw(self):
         self.screen.fill('black')
         self.Level.draw()
         self.player.draw()
         self.projectiles.draw(self.screen)
+
+        for enemy in self.enemy_list:
+            enemy.draw()
         
     def check_events(self):
 
         hit_tiempo_actual = pg.time.get_ticks()
         hand_tiempo_actual = pg.time.get_ticks()
+
+        print(self.player.hand_hit_tick)
 
         for event in pg.event.get():
 
@@ -62,8 +83,13 @@ class Game:
                     self.player.hand_visible = True
                     self.player.time_hand = hand_tiempo_actual
 
+                    self.player.hand_hit_tick += 1
+
                 if self.player.sttas['hand'] == 1:
                     self.player.shoot()
+            
+            else:
+                self.player.hand_hit_tick = 0
             
             if event.type == pg.MOUSEBUTTONDOWN and event.button == 3:
                 self.player.hit_visible = True
