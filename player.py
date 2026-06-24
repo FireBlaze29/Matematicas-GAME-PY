@@ -22,12 +22,11 @@ class Player(pg.sprite.Sprite):
             'obj': None,
         }
 
-        self.hand_hit_tick = 0
-
-        #self.type_arm = 0       reintentar en otro momento
-
         self.create_hit()
         self.create_hand()
+
+        self.rect_hand_world = pg.Rect(0, 0, 0, 0)
+        self.rect_hit_world = pg.Rect(0, 0, 0, 0)
 
     def movement(self):
         dx, dy = 0, 0
@@ -44,7 +43,7 @@ class Player(pg.sprite.Sprite):
             dx += speed
 
         if dx != 0 and dy != 0:
-            dx *= 0.7071  # 1 / sqrt(2)
+            dx *= 0.7071
             dy *= 0.7071
 
         new_x = self.x + dx
@@ -55,7 +54,6 @@ class Player(pg.sprite.Sprite):
         if not self.check_circle_collision(self.x, new_y, self.radius):
             self.y = new_y
 
-        # Actualizar el rect del sprite
         self.rect.center = (self.x * TILE_SIZE * self.game.IndexAlto,
                             self.y * TILE_SIZE * self.game.IndexAlto)
         
@@ -67,16 +65,14 @@ class Player(pg.sprite.Sprite):
         
         if keys[pg.K_y] and self.sttas['hand'] != 0:
             self.sttas['hand'] = 0
-            #coord = self.check_item_collision("coord")  se intento hacer un sistema de re-recoleccion
-            #self.game.Level.not_wall[coord] = self.type_arm       pero da problemas con el mapa
 
         self.rotate_toward_mouse()
 
     def rotate_toward_mouse(self):
         mouse_px, mouse_py = pg.mouse.get_pos()
         scale = TILE_SIZE * self.game.IndexAlto
-        world_mouse_x = mouse_px / scale
-        world_mouse_y = mouse_py / scale
+        world_mouse_x = (mouse_px + self.game.camera_x) / scale
+        world_mouse_y = (mouse_py + self.game.camera_y) / scale
 
         dx = world_mouse_x - self.x
         dy = world_mouse_y - self.y
@@ -84,7 +80,6 @@ class Player(pg.sprite.Sprite):
         self.angle %= math.tau
 
     def check_circle_collision(self, cx, cy, radius):
-        """Devuelve True si el círculo (cx, cy, radius) colisiona con alguna pared."""
         min_tile_x = int(math.floor(cx - radius))
         max_tile_x = int(math.ceil(cx + radius))
         min_tile_y = int(math.floor(cy - radius))
@@ -101,31 +96,52 @@ class Player(pg.sprite.Sprite):
                         return True
         return False
     
-    def check_item_collision(self, validate, add_radius = 0):
+    def check_item_collision(self, validate, add_radius=0):
         pickup_radius = self.radius + add_radius
-
         for (tx, ty) in list(self.game.Level.not_wall.keys()):
             obj_x = tx + 0.5
             obj_y = ty + 0.5
-
             dist = math.hypot(self.x - obj_x, self.y - obj_y)
-
             if dist < pickup_radius:
                 if validate == "coord":
                     return (tx, ty)
                 elif validate == "bool":
                     return True
 
-    def draw(self):
-        pg.draw.line(self.game.screen, 'yellow',
-                     (self.x * TILE_SIZE * self.game.IndexAlto, self.y * TILE_SIZE * self.game.IndexAlto),
-                     (self.x * TILE_SIZE * self.game.IndexAlto + ANCHO/4 * math.cos(self.angle),
-                      self.y * TILE_SIZE * self.game.IndexAlto + ANCHO/4 * math.sin(self.angle)), 2)
-        pg.draw.circle(self.game.screen, 'yellow',
-                       (self.x * TILE_SIZE * self.game.IndexAlto, self.y * TILE_SIZE * self.game.IndexAlto), 5)
+    def update_hitboxes(self):
+        """Actualiza las superficies rotadas y los rectángulos en coordenadas de mundo."""
+        # Rotar superficies con el ángulo actual
+        self.roteted_hand = pg.transform.rotate(self.collider_hand, -math.degrees(self.angle))
+        self.roteted_hit = pg.transform.rotate(self.collider_hit, -math.degrees(self.angle))
 
+        scale = TILE_SIZE * self.game.IndexAlto
+
+        # Mano
+        center_x_world = (self.x + math.cos(self.angle) * self.hand_lado/32) * scale
+        center_y_world = (self.y + math.sin(self.angle) * self.hand_lado/32) * scale
+        self.rect_hand_world = self.roteted_hand.get_rect(center=(center_x_world, center_y_world))
+
+        # Golpe
+        center_x_world = (self.x + math.cos(self.angle) * self.hit_lado/32) * scale
+        center_y_world = (self.y + math.sin(self.angle) * self.hit_lado/32) * scale
+        self.rect_hit_world = self.roteted_hit.get_rect(center=(center_x_world, center_y_world))
+
+    def draw(self):
+        cam_x = self.game.camera_x
+        cam_y = self.game.camera_y
+
+        # Línea de dirección
+        pg.draw.line(self.game.screen, 'yellow',
+                     (self.x * TILE_SIZE * self.game.IndexAlto - cam_x,
+                      self.y * TILE_SIZE * self.game.IndexAlto - cam_y),
+                     (self.x * TILE_SIZE * self.game.IndexAlto - cam_x + ANCHO/4 * math.cos(self.angle),
+                      self.y * TILE_SIZE * self.game.IndexAlto - cam_y + ANCHO/4 * math.sin(self.angle)), 2)
+        pg.draw.circle(self.game.screen, 'yellow',
+                       (self.x * TILE_SIZE * self.game.IndexAlto - cam_x,
+                        self.y * TILE_SIZE * self.game.IndexAlto - cam_y), 5)
         pg.draw.circle(self.game.screen, (139, 69, 19),
-                       (self.x * TILE_SIZE * self.game.IndexAlto, self.y * TILE_SIZE * self.game.IndexAlto),
+                       (self.x * TILE_SIZE * self.game.IndexAlto - cam_x,
+                        self.y * TILE_SIZE * self.game.IndexAlto - cam_y),
                        self.radius * TILE_SIZE * self.game.IndexAlto, 2)
 
         self.draw_hit()
@@ -133,6 +149,7 @@ class Player(pg.sprite.Sprite):
 
     def update(self):
         self.movement()
+        self.update_hitboxes()
 
     @property
     def pos(self):
@@ -143,47 +160,46 @@ class Player(pg.sprite.Sprite):
         return int(self.x), int(self.y)
 
     def draw_hand(self):
-        if self.sttas['hand'] == 0:
-            self.hand = pg.draw.rect(self.collider_hand, self.hand_color,
-                                     (0, 0, self.hand_lado, self.hand_lado), 2)
-            self.roteted_hand = pg.transform.rotate(self.collider_hand, -math.degrees(self.angle))
-
-            if self.hand_visible:
-                self.rect_hand = self.roteted_hand.get_rect(
-                    center=((self.x + math.cos(self.angle) * self.hand_lado/32) * TILE_SIZE * self.game.IndexAlto,
-                            (self.y + math.sin(self.angle) * self.hand_lado/32) * TILE_SIZE * self.game.IndexAlto))
-            else:
-                self.rect_hand = self.roteted_hand.get_rect(center=(-1000, -1000))
-            self.game.screen.blit(self.roteted_hand, self.rect_hand)
+        if self.sttas['hand'] == 0 and self.hand_visible:
+            cam_x = self.game.camera_x
+            cam_y = self.game.camera_y
+            # Dibujar la superficie rotada en la posición de pantalla
+            rect_pantalla = self.roteted_hand.get_rect(
+                center=(self.rect_hand_world.centerx - cam_x,
+                        self.rect_hand_world.centery - cam_y)
+            )
+            self.game.screen.blit(self.roteted_hand, rect_pantalla)
 
     def create_hand(self):
         self.hand_lado = 15 * self.game.IndexAlto
-        self.hand_color = (0, 0, 255)  # Azul para el hitbox
+        self.hand_color = (0, 0, 255)  # Azul
         self.time_hand = 0
         self.hand_ms = 300
         self.hand_visible = False
         self.collider_hand = pg.Surface((self.hand_lado, self.hand_lado), pg.SRCALPHA)
+        # Dibujar el rectángulo en la superficie (borde azul)
+        pg.draw.rect(self.collider_hand, self.hand_color, (0, 0, self.hand_lado, self.hand_lado), 2)
+        self.roteted_hand = pg.transform.rotate(self.collider_hand, -math.degrees(self.angle))
 
     def draw_hit(self):
-        self.hit = pg.draw.rect(self.collider_hit, self.hit_color,
-                                (0, 0, self.hit_lado, self.hit_lado), 2)
-        self.roteted_hit = pg.transform.rotate(self.collider_hit, -math.degrees(self.angle))
-
         if self.hit_visible:
-            self.rect_hit = self.roteted_hit.get_rect(
-                center=((self.x + math.cos(self.angle) * self.hit_lado/32) * TILE_SIZE * self.game.IndexAlto,
-                        (self.y + math.sin(self.angle) * self.hit_lado/32) * TILE_SIZE * self.game.IndexAlto))
-        else:
-            self.rect_hit = self.roteted_hit.get_rect(center=(-1000, -1000))
-        self.game.screen.blit(self.roteted_hit, self.rect_hit)
+            cam_x = self.game.camera_x
+            cam_y = self.game.camera_y
+            rect_pantalla = self.roteted_hit.get_rect(
+                center=(self.rect_hit_world.centerx - cam_x,
+                        self.rect_hit_world.centery - cam_y)
+            )
+            self.game.screen.blit(self.roteted_hit, rect_pantalla)
 
     def create_hit(self):
         self.hit_lado = 15 * self.game.IndexAlto
-        self.hit_color = (255, 0, 0)  # Rojo para el hitbox
+        self.hit_color = (255, 0, 0)  # Rojo
         self.time_hit = 0
         self.hit_ms = 300
         self.hit_visible = False
         self.collider_hit = pg.Surface((self.hit_lado, self.hit_lado), pg.SRCALPHA)
+        pg.draw.rect(self.collider_hit, self.hit_color, (0, 0, self.hit_lado, self.hit_lado), 2)
+        self.roteted_hit = pg.transform.rotate(self.collider_hit, -math.degrees(self.angle))
     
     def shoot(self):
         proj = Armas(self.game, self.x, self.y, self.angle)

@@ -1,9 +1,8 @@
-import pygame as pg #pip install pygame-ce
+import pygame as pg
 import sys
 
-from levels import ChargeLevels, Level1, Level2
+from levels import ChargeLevels, Level1, Level2, Level3
 from player import Player
-import player
 from enemy import Enemy
 from settings import ANCHO, ALTO, TILE_SIZE, FPS
 
@@ -19,55 +18,56 @@ class Game:
         self.clock = pg.time.Clock()
         self.delta_time = 1
 
+        self.camera_x = 0
+        self.camera_y = 0
+
         self.projectiles = pg.sprite.Group()
 
         self.Recharge()
     
     def Recharge(self):
-        self.Level = ChargeLevels(self, Level2)
+        self.Level = ChargeLevels(self, Level1)
         self.player = Player(self)
 
         self.enemy_list = []
         for pos in self.Level.enemy1_pos:
             self.enemy_list.append(Enemy(self, (pos[0], pos[1])))
+    
+    def update_camera(self):
+        scale = TILE_SIZE * self.IndexAlto
+        self.camera_x = self.player.x * scale - ANCHO / 2
+        self.camera_y = self.player.y * scale - ALTO / 2
 
     def update(self):
         self.player.update()
         self.projectiles.update()
 
-        pg.display.flip()
-        self.delta_time = self.clock.tick(FPS)
-        pg.display.set_caption(f"Gameplay - FPS: {self.clock.get_fps():.1f}")
-
         for enemy in self.enemy_list:
             enemy.update()
 
-            if self.player.rect_hand.colliderect(enemy.rect) and self.player.hand_hit_tick == 1:
-                enemy.sttas["life"] += -1
-            
-            if enemy.sttas["life"] < 1:
-                self.enemy_list.remove(enemy)
-        
-        #print(self.enemy_list)
+        self.update_camera()
+
+        pg.display.flip()
+        self.delta_time = self.clock.tick(FPS)
+        pg.display.set_caption(f"Gameplay - FPS: {self.clock.get_fps():.1f}")
 
     def draw(self):
         self.screen.fill('black')
         self.Level.draw()
         self.player.draw()
-        self.projectiles.draw(self.screen)
-
+        
+        # Dibujar proyectiles manualmente con cámara
+        for proj in self.projectiles:
+            proj.draw(self.screen, self.camera_x, self.camera_y)
+        
         for enemy in self.enemy_list:
             enemy.draw()
-        
-    def check_events(self):
 
+    def check_events(self):
         hit_tiempo_actual = pg.time.get_ticks()
         hand_tiempo_actual = pg.time.get_ticks()
 
-        print(self.player.hand_hit_tick)
-
         for event in pg.event.get():
-
             if event.type == pg.QUIT or (event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE):
                 pg.quit()
                 sys.exit()
@@ -82,14 +82,15 @@ class Game:
                 if self.player.sttas['hand'] == 0:
                     self.player.hand_visible = True
                     self.player.time_hand = hand_tiempo_actual
-
-                    self.player.hand_hit_tick += 1
+                    
+                    for enemy in self.enemy_list:
+                        if self.player.rect_hand_world.colliderect(enemy.rect):
+                            enemy.sttas["life"] -= 1
+                            if enemy.sttas["life"] < 1:
+                                self.enemy_list.remove(enemy)
 
                 if self.player.sttas['hand'] == 1:
                     self.player.shoot()
-            
-            else:
-                self.player.hand_hit_tick = 0
             
             if event.type == pg.MOUSEBUTTONDOWN and event.button == 3:
                 self.player.hit_visible = True
@@ -103,6 +104,6 @@ class Game:
 
     def run(self):
         while True:
+            self.update()
             self.check_events()
             self.draw()
-            self.update()

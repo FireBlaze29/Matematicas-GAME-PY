@@ -21,12 +21,15 @@ class Enemy(pg.sprite.Sprite):
             'obj': None,
         }
 
-        
     def movement(self):
-        pass
+        
+        if self.game.player:
+            dx = self.game.player.x - self.x
+            dy = self.game.player.y - self.y
+            self.angle = math.atan2(dy, dx)
+            self.angle %= math.tau
 
     def check_circle_collision(self, cx, cy, radius):
-
         min_tile_x = int(math.floor(cx - radius))
         max_tile_x = int(math.ceil(cx + radius))
         min_tile_y = int(math.floor(cy - radius))
@@ -44,15 +47,23 @@ class Enemy(pg.sprite.Sprite):
         return False
     
     def draw(self):
+        
+        cam_x = self.game.camera_x
+        cam_y = self.game.camera_y
+        
         pg.draw.line(self.game.screen, 'yellow',
-                     (self.x * TILE_SIZE * self.game.IndexAlto, self.y * TILE_SIZE * self.game.IndexAlto),
-                     (self.x * TILE_SIZE * self.game.IndexAlto + 12 * math.cos(self.angle),
-                      self.y * TILE_SIZE * self.game.IndexAlto + 12 * math.sin(self.angle)), 2)
+                     (self.x * TILE_SIZE * self.game.IndexAlto - cam_x,
+                      self.y * TILE_SIZE * self.game.IndexAlto - cam_y),
+                     (self.x * TILE_SIZE * self.game.IndexAlto - cam_x + 12 * math.cos(self.angle),
+                      self.y * TILE_SIZE * self.game.IndexAlto - cam_y + 12 * math.sin(self.angle)), 2)
+        
         pg.draw.circle(self.game.screen, 'yellow',
-                       (self.x * TILE_SIZE * self.game.IndexAlto, self.y * TILE_SIZE * self.game.IndexAlto), 5)
+                       (self.x * TILE_SIZE * self.game.IndexAlto - cam_x,
+                        self.y * TILE_SIZE * self.game.IndexAlto - cam_y), 5)
         
         pg.draw.circle(self.game.screen, 'red',
-                       (self.x * TILE_SIZE * self.game.IndexAlto, self.y * TILE_SIZE * self.game.IndexAlto),
+                       (self.x * TILE_SIZE * self.game.IndexAlto - cam_x,
+                        self.y * TILE_SIZE * self.game.IndexAlto - cam_y),
                        self.radius * TILE_SIZE * self.game.IndexAlto, 2)
     
     def update(self):
