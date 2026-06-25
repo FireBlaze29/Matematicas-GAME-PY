@@ -11,12 +11,12 @@ class Armas(pg.sprite.Sprite):
         self.speed = 0.02
         self.radius = 0.4
 
-        size = int(self.radius * 2 * TILE_SIZE * self.game.IndexAlto)
+        size = int(self.radius * 2 * self.game.tile_size)
         self.image = pg.Surface((size, size), pg.SRCALPHA)
         pg.draw.circle(self.image, (255, 255, 255), (size//2, size//2), size//2)
         
-        self.rect = self.image.get_rect(center=(x * TILE_SIZE * self.game.IndexAlto,
-                                                y * TILE_SIZE * self.game.IndexAlto))
+        self.rect = self.image.get_rect(center=(x * self.game.tile_size,
+                                                y * self.game.tile_size))
 
     def update(self):
         dx = math.cos(self.angle) * self.speed * self.game.delta_time
@@ -28,8 +28,8 @@ class Armas(pg.sprite.Sprite):
             self.kill()
 
 
-        self.rect.center = (self.x * TILE_SIZE * self.game.IndexAlto,
-                            self.y * TILE_SIZE * self.game.IndexAlto)
+        self.rect.center = (self.x * self.game.tile_size,
+                            self.y * self.game.tile_size)
 
     def draw(self, screen, camera_x, camera_y):
         

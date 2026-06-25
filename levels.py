@@ -112,14 +112,14 @@ class ChargeLevels:
 
         for pos in self.world_map:
             pg.draw.rect(self.game.screen, 'darkgray',
-                         (pos[0] * TILE_SIZE * self.game.IndexAlto - cam_x,
-                          pos[1] * TILE_SIZE * self.game.IndexAlto - cam_y,
-                          TILE_SIZE * self.game.IndexAlto,
-                          TILE_SIZE * self.game.IndexAlto), 2)
+                         (pos[0] * self.game.tile_size - cam_x,
+                          pos[1] * self.game.tile_size - cam_y,
+                          self.game.tile_size,
+                          self.game.tile_size), 2)
         
         for pos in self.not_wall:
             pg.draw.rect(self.game.screen, 'red',
-                         (pos[0] * TILE_SIZE * self.game.IndexAlto - cam_x,
-                          pos[1] * TILE_SIZE * self.game.IndexAlto - cam_y,
-                          TILE_SIZE * self.game.IndexAlto,
-                          TILE_SIZE * self.game.IndexAlto), 2)
+                         (pos[0] * self.game.tile_size - cam_x,
+                          pos[1] * self.game.tile_size - cam_y,
+                          self.game.tile_size,
+                          self.game.tile_size), 2)

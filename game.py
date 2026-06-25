@@ -12,7 +12,6 @@ class Game:
 
         self.ancho, self.alto = ANCHO, ALTO
         self.IndexAncho, self.IndexAlto = round(self.ancho/ANCHO, 2), round(self.alto/ALTO, 2)
-        self.tile_size = TILE_SIZE * self.IndexAlto
 
         self.screen = pg.display.set_mode((self.ancho, self.alto), pg.RESIZABLE)
         self.clock = pg.time.Clock()
@@ -21,11 +20,15 @@ class Game:
         self.camera_x = 0
         self.camera_y = 0
 
+        self.vel_zoom = 0.5
+
         self.projectiles = pg.sprite.Group()
 
         self.Recharge()
     
     def Recharge(self):
+        self.tile_size = TILE_SIZE * self.IndexAlto
+
         self.Level = ChargeLevels(self, Level1)
         self.player = Player(self)
 
@@ -77,6 +80,15 @@ class Game:
                 self.screen = pg.display.set_mode((self.ancho, self.alto), pg.RESIZABLE)
                 self.IndexAncho, self.IndexAlto = self.ancho/ANCHO, self.alto/ALTO
                 self.Recharge()
+            
+            elif event.type == pg.MOUSEWHEEL:
+                self.tile_size += (event.y * TILE_SIZE * self.vel_zoom) * self.IndexAlto
+
+                if self.tile_size < 10 * self.IndexAlto:
+                    self.tile_size = 10 * self.IndexAlto
+                # Opcional: límite máximo
+                if self.tile_size > 500 * self.IndexAlto:
+                    self.tile_size = 500 * self.IndexAlto
             
             if event.type == pg.MOUSEBUTTONDOWN and event.button == 1:
                 if self.player.sttas['hand'] == 0:
